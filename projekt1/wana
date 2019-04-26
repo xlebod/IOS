@@ -7,18 +7,31 @@ do
 	case $1 in
 		-a)
 			shift
-			AFTER_DATETIME="$1"
-			AFTER_DATETIME=$(printf "%s" $AFTER_DATETIME | sed 's/[^0-9]//g')
+			if ! echo "$1" | grep -Eq "^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}$";then
+				echo ERROR: Neplatny format pre :"$1".
+				exit 1
+			fi
+			AFTER_DATETIME=$(printf "%s" "$1" | sed 's/[^0-9]//g')
 			AFTER_FLAG=1
 			;;
 		-b)
 			shift
+			if ! echo "$1" | grep -Eq "^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}$";then
+				echo ERROR: Neplatny format pre :"$1".
+				exit 1
+			fi
 			BEFORE_DATETIME="$1"
 			BEFORE_DATETIME=$(printf "%s" $BEFORE_DATETIME | sed 's/[^0-9]//g')
 			BEFORE_FLAG=1
 			;;
 		-ip)
 			shift
+			IPv4_Regex="((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+			if ! echo "$1" | grep -Eq "(^([0-9a-f]{0,4}:{1,2}){2,7}[0-9a-f]{1,4}$)|(^$IPv4_Regex\.)){3}$IPv4_Regex$)"
+			then
+				echo ERROR: Neplatny format pre :"$1". Prosim zadajte IPv4 alebo IPv6 adresu
+				exit 1;
+			fi 
 			IPADRESS="$1"
 			IP_FLAG=1
 			;;
@@ -30,7 +43,7 @@ do
 		list-ip)
 			LIST_IP=1
 			;;
-		list-host)
+		list-hosts)
 			LIST_HOST=1
 			;;
 		list-uri)
@@ -74,7 +87,7 @@ done
 	fi
 	DATES=$(printf "%s" "$LOG_FILE" | awk 'BEGIN{months="JanFebMarAprMayJunJulAugSepOctNovDec"}
 	{
-		gsub("\[","",$4); split($4,arr,/[\/:]/)
+		gsub("[[]","",$4); split($4,arr,/[\/:]/)
 		printf "%4s%02d%s%s%s%s ",arr[3], index(months,arr[2])/3+1,arr[1],arr[4],arr[5],arr[6]}')
 	DATES=$(echo $DATES)
 
@@ -129,17 +142,18 @@ if [ "$LIST_URI" = "1" ];then
 fi
 
 if [ "$HIST_IP" = "1" ];then
-	LOG_FILE=$(printf "%s" "$LOG_FILE" | awk '{print $1}' | sort | uniq -c | sort -n)
-	LOG_FILE=$(printf "%s" "$LOG_FILE" | awk '{printf "%s (%d):",$2,$1
+	LOG_FILE=$(printf "%s" "$LOG_FILE" | awk '{print $1}' | sort | uniq -c | sort -nr)
+	LOG_FILE=$(printf "%s" "$LOG_FILE" | awk '{printf "%s (%d): ",$2,$1
 		for(i=0;i < $1; i++) printf "#";printf "\n"}')
 fi
 
 if [ "$HIST_LOAD" = "1" ];then
 	LOG_FILE=$(printf "%s" "$LOG_FILE" | awk 'BEGIN{months="JanFebMarAprMayJunJulAugSepOctNovDec"}
 	{
-		gsub("\[","",$4); split($4,arr,/[\/:]/)
+		gsub("[[]","",$4); split($4,arr,/[\/:]/)
 		printf "%4s-%02d-%s %s:00",arr[3], index(months,arr[2])/3+1,arr[1],arr[4]; printf "\n"
-	}' | uniq -c | awk '{printf "%s %s (%d):",$2,$3,$1; for(i=0;i<$1;i++) printf "#"; printf "\n"}')
+	}' | uniq -c | awk '{printf "%s %s (%d): ",$2,$3,$1; for(i=0;i<$1;i++) printf "#"; printf "\n"}
+	' | sort -n)
 fi
 
 echo "$LOG_FILE"
