@@ -1,1 +1,0 @@
--uri "/robots\.txt" list-hosts {LOGS_DIR}*log*
