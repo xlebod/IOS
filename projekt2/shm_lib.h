@@ -19,8 +19,8 @@
 #define CAPTAIN_SEM "/xlebod00.ios.projekt.captain"
 #define MEMACCESS_SEM "/xlebod00.ios.projekt.memAccess"
 #define MOLO_SEM "/xlebod00.ios.projekt.molo"
-#define EMPTYBOAT_SEM "/xlebod00.ios.projekt.emptyBoat"
 #define DISEMBARK_SEM "/xlebod00.ios.projekt.boat"
+#define BOARD_SEM "/xlebod00.ios.projekt.boardBoat"
 #define shmKEYaction "/xlebod00-ios-actionnum"
 #define shmKEYserf "/xlebod00-ios-serf"
 #define shmKEYhacker "/xlebod00-ios-hacker"
@@ -42,8 +42,8 @@ sem_t *boatMembers = NULL;
 sem_t *captain = NULL;
 sem_t *memAccess = NULL;
 sem_t *molo = NULL;
-sem_t *emptyBoat = NULL;
 sem_t *disembark = NULL;
+sem_t *boardBoat = NULL;
 
 
 
@@ -261,30 +261,38 @@ void serfBoat_unlink()
 int init()
 {
 	if ((boatMembers = sem_open(BOATMEMBERS_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
+		printf("1\n");
 		return -1;
 	}
 
 	if ((captain = sem_open(CAPTAIN_SEM, O_CREAT | O_EXCL , 0666, 0)) == SEM_FAILED){
+		printf("2\n");
 		return -1;
 	}
 
 	if((memAccess = sem_open(MEMACCESS_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
+		printf("3\n");
 		return -1;
 	}
 
 	if ((molo = sem_open(MOLO_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		return -1;
-	}
-
-	if ((emptyBoat = sem_open(EMPTYBOAT_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
+		printf("4\n");
 		return -1;
 	}
 
 	if ((disembark = sem_open(DISEMBARK_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
+		printf("5\n");
 		return -1;
 	}
 
+	if ((boardBoat = sem_open(BOARD_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
+		printf("6\n");
+		return -1;
+	}
+
+
 	if(serfCount_init() == -1){
+		printf("7\n");
 		return -1;
 	}
 
@@ -320,10 +328,18 @@ void ClearData()
 	sem_unlink(CAPTAIN_SEM);
 	sem_close(memAccess);
 	sem_unlink(MEMACCESS_SEM);
+	sem_close(disembark);
+	sem_unlink(DISEMBARK_SEM);
+	sem_close(molo);
+	sem_unlink(MOLO_SEM);
+	sem_close(boardBoat);
+	sem_unlink(BOARD_SEM);
 	actionNumber_unlink();
 	serfCount_unlink();
 	hackerCount_unlink();
 	numberOfProcesses_unlink();
+	serfBoat_unlink();
+	hackerBoat_unlink();
 }
 
 void shmAccessOpen()
