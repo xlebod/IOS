@@ -1,166 +1,189 @@
 
 #include "shm_lib.h"
 
-
-
-
-void Hacker(int capacity, int waitTime, int rowTime)
+void Hacker(int capacity, int waitTime, int rowTime, FILE *outFile)
 {
+	char name[] = "HACK";
 	shmAccessOpen();
+	// Assigns process number
 	int processNum = shm_numberOfProcesses[0]++;
+	fprintf(outFile, "%d: %s %d: starts \n", ++shm_actionNumber[0], name, processNum);
 	shmAccessClose();
-	//printf("HACKER[%d]: LOADED\n", processNum );
-	char is_captain = 0;
+	//initialization of variables
 	char cant_enter_molo = 0;
 	char cant_enter_ship = 0;
 	do
 	{
 		shmAccessOpen();
-		printf("Hacker Count on molo: %d; Serf Count: %d\n",shm_hackerCount[0],shm_serfCount[0] );
+		// Checks the option to get on the molo
 		if(shm_serfCount[0] + shm_hackerCount[0] < capacity){
-			printf("Hacker[%d]: Got on Molo\n",processNum);
 			cant_enter_molo = 0;
 			sem_wait(molo);
+			// Gets on molo
 			shm_hackerCount[0]++;
+			fprintf(outFile, "%d: %s %d: waits: %d: %d\n", ++shm_actionNumber[0], name, processNum,
+				shm_hackerCount[0], shm_serfCount[0]);
 			shmAccessClose();
 		}
+		// if it can't, it waits and then tries again.
 		else{
-			printf("Hacker[%d]:waiting\n",processNum);
+			fprintf(outFile, "%d: %s %d: leaves queue: %d: %d\n", ++shm_actionNumber[0], name,
+				processNum, shm_hackerCount[0], shm_serfCount[0]);
 			cant_enter_molo = 1;
 			shmAccessClose();
 			mysleep(waitTime);
+			shmAccessOpen();
+			fprintf(outFile, "%d: %s %d: is back\n", ++shm_actionNumber[0], name, processNum);
+			shmAccessClose();
 		}	
 	} while (cant_enter_molo);
 
 	do{
 		sem_wait(boardBoat);
 		shmAccessOpen();
+		// Checks the option of loading into the boat.
+		// Conditions:
+		// - Less than 4 people on the boat
+		// - Less than 3 serfs on board
+		// - Current boat members aren't SHH.
+		// - More than 1 hacker on molo
+		// - If 4 hacks want to board, there need to be 4 hacks on the molo
 		if(shm_hackerBoat[0] + shm_serfBoat[0] < 4 && shm_serfBoat[0] < 3 && 
 			!(shm_serfBoat[0] == 1 && shm_hackerBoat[0] == 2) && shm_hackerCount[0] >= 2 && 
 			!((shm_hackerBoat[0] == 2 && shm_serfBoat == 0) && shm_hackerCount[0] < 4)){	
-				cant_enter_ship = 0;
-				printf("HACKER[%d]: BOARDING SHIP\n",processNum );
-				shm_hackerBoat[0]++;
-				//CAPTAIN BRANCH
-				if(shm_hackerBoat[0] + shm_serfBoat[0] == 4){
-					sem_wait(captain);
-					is_captain = 1;
-					for(int i = 0; i < shm_hackerBoat[0]; i++){
-						shm_hackerCount[0]--;
-						sem_post(molo);
-					}
-					for (int i = 0; i < shm_serfBoat[0]; i++){
-						shm_serfCount[0]--;
-						sem_post(molo);
-					}
-					shmAccessClose();
-					printf("HACKER[%d]: Sailing away\n",processNum );
-
-					mysleep(rowTime);
-
-					sem_post(disembark);
-					sem_post(disembark);
-					sem_post(disembark);
-					printf("waiting for end\n");
-					sem_wait(boatMembers);
-					sem_wait(boatMembers);
-					sem_wait(boatMembers);
-					shmAccessOpen();
-					if(shm_hackerBoat[0] == 1 && shm_serfBoat[0] == 0){
-						shm_hackerBoat[0] = 0;
-						shmAccessClose();
-						printf("HACKER[%d]: Ending ride\n",processNum );
-						sem_post(captain);
-						for(int i = 0; i < 4; i++) sem_post(boardBoat);
-						exit(EXIT_SUCCESS);
-					}
-					shmAccessClose();
-					pid_t errorID = fork();
-					if(errorID > 0){
-						fprintf(stderr, "Did not succesfully disembark\n");
-						shmAccessOpen();
-						printf("HACKER[%d]: Leftover members - H: %d, S: %d\n",processNum, shm_hackerCount[0], shm_serfCount[0] );
-						shmAccessClose();
-						ClearData();
-						exit(EXIT_FAILURE);
-					}
+			cant_enter_ship = 0;
+			shm_hackerBoat[0]++;
+			//if there are exactly 4 people on board - CAPTAIN BRANCH:
+			if(shm_hackerBoat[0] + shm_serfBoat[0] == 4){
+				sem_wait(captain);
+				// Takes away the appropriate number of Serfs and Hacks
+				for(int i = 0; i < shm_hackerBoat[0]; i++){
+					shm_hackerCount[0]--;
+					sem_post(molo);
 				}
+				for (int i = 0; i < shm_serfBoat[0]; i++){
+					shm_serfCount[0]--;
+					sem_post(molo);
+				}
+				// Starts the boat
+				fprintf(outFile, "%d: %s %d: boards: %d: %d\n", ++shm_actionNumber[0], name,
+					processNum, shm_hackerCount[0], shm_serfCount[0]);
+				shmAccessClose();
 
-				else{
+				mysleep(rowTime);
+				// Signals the members to disembark
+				for (int i = 0; i < 3; i++) sem_post(disembark);
+				// Waits for all 3 members to disembark
+				for (int i = 0; i < 3; i++) sem_wait(boatMembers);
+
+				shmAccessOpen();
+				// If there is only the captain on board, ends the ride and exits.
+				if(shm_hackerBoat[0] == 1 && shm_serfBoat[0] == 0){
+					shm_hackerBoat[0] = 0;
+					fprintf(outFile, "%d: %s %d: captain exits: %d: %d\n", ++shm_actionNumber[0],
+						name, processNum, shm_hackerCount[0], shm_serfCount[0]);
 					shmAccessClose();
-					sem_wait(disembark);
-					printf("HACKER[%d]: DISSEMBARKING\n",processNum );
-					shmAccessOpen();
-					shm_hackerBoat[0]--;
-					shmAccessClose();
-					sem_post(boatMembers);
+					sem_post(captain);
+					for(int i = 0; i < 4; i++) sem_post(boardBoat);
 					exit(EXIT_SUCCESS);
 				}
+				// If there are leftover members on board ends with an error message
+				else{
+					fprintf(stderr, "%d: %s %d: Did not succesfully disembark\n",
+						++shm_actionNumber[0], name, processNum);
+					fprintf(stderr,"Leftover on boat - H: %d, S: %d\n",	shm_hackerBoat[0],
+						shm_serfBoat[0]);
+					shmAccessClose();
+					ClearData();
+					exit(EXIT_FAILURE);
+				}
 			}
+			// SHIP MEMBER BRANCH: 
 			else{
 				shmAccessClose();
-				cant_enter_ship = 1;
-				sem_post(boardBoat);
+				// Waits until it recieves a disembark command
+				sem_wait(disembark);
+				shmAccessOpen();
+				// Gets off
+				shm_hackerBoat[0]--;
+				fprintf(outFile, "%d: %s %d: member exits: %d: %d\n", ++shm_actionNumber[0],
+					name, processNum, shm_hackerCount[0], shm_serfCount[0]);
+				shmAccessClose();
+				// signals the captain about successful disembarking
+				sem_post(boatMembers);
+				exit(EXIT_SUCCESS);
 			}
+		}
+		// If the process couldn't get on the boat, it tries again.
+		else{
+			shmAccessClose();
+			cant_enter_ship = 1;
+			sem_post(boardBoat);
+		}
 	}while(cant_enter_ship);
-	fprintf(stderr, "HACKER[%d]:I failed Bossman\n",processNum);
+	//If for some reason it gets out, the process is ended with an error message
+	shmAccessOpen();
+	fprintf(stderr, "%d: %s %d: Ended unsuccefully\n",++shm_actionNumber[0], name, processNum);
+	shmAccessClose();
 	exit(EXIT_FAILURE);
 }
 
 
-
-
-
-
-
-void Serf(int capacity, int waitTime, int rowTime)
+void Serf(int capacity, int waitTime, int rowTime, FILE *outFile)
 {
-
+	char name[] = "SERF";
 	shmAccessOpen();
 	int processNum = shm_numberOfProcesses[0]++;
+	fprintf(outFile, "%d: %s %d: starts \n", ++shm_actionNumber[0], name, processNum);
 	shmAccessClose();
-	//printf("SERF[%d]: LOADED\n", processNum );
-	char is_captain = 0;
 	char cant_enter_molo = 0;
 	char cant_enter_ship = 0;
-	//ENTERING MOLO
+
 	do
 	{
 		shmAccessOpen();
-		printf("Hacker Count on molo: %d; Serf Count: %d\n",shm_hackerCount[0],shm_serfCount[0] );
 		if(shm_serfCount[0] + shm_hackerCount[0] < capacity){
-			printf("SERF[%d] Got on Molo\n",processNum);
 			cant_enter_molo = 0;
 			sem_wait(molo);
 			shm_serfCount[0]++;
+			fprintf(outFile, "%d: %s %d: waits: %d: %d\n", ++shm_actionNumber[0], name, processNum,
+				shm_hackerCount[0], shm_serfCount[0]);
 			shmAccessClose();
 		}
 		else{
-			printf("SERF[%d]:waiting\n",processNum);
+			fprintf(outFile, "%d: %s %d: leaves queue: %d: %d\n", ++shm_actionNumber[0], name,
+				processNum, shm_hackerCount[0], shm_serfCount[0]);
 			cant_enter_molo = 1;
 			shmAccessClose();
 			mysleep(waitTime);
+			shmAccessOpen();
+			fprintf(outFile, "%d: %s %d: is back\n", ++shm_actionNumber[0], name, processNum);
+			shmAccessClose();
 		}	
 	} while (cant_enter_molo);
-	//CAN BOARD BOAT
+
 	do{
 		sem_wait(boardBoat);
 		shmAccessOpen();
+		// Checks the option of loading into the boat.
+		// Conditions:
+		// - Less than 4 people on the boat
+		// - Less than 3 serfs on board
+		// - Current boat members aren't SHH.
+		// - More than 1 hacker on molo
+		// - If 4 hacks want to board, there need to be 4 hacks on the molo
 		if(shm_hackerBoat[0] + shm_serfBoat[0] < 4 && shm_hackerBoat[0] <= 2 && 
 			!(shm_hackerBoat[0] == 1 && shm_serfBoat[0] == 2) && shm_serfCount[0] >= 2 &&
 			!((shm_serfBoat[0] == 2 && shm_hackerBoat[0] == 0) && shm_serfCount[0] < 4)){
 			cant_enter_ship = 0;
-			printf("SERF[%d]: BOARDING SHIP\n", processNum);
 			shm_serfBoat[0]++;
-			//CPATAIN BRANCH
+			//if there are exactly 4 people on board - CAPTAIN BRANCH:
 			if(shm_hackerBoat[0] + shm_serfBoat[0] == 4){
 				
 				//assigning captain
 				sem_wait(captain);
-				is_captain = 1;
 
-
-				//Taking boat members from molo
+				// Takes away the appropriate number of Serfs and Hacks
 				for(int i = 0; i < shm_serfBoat[0]; i++){
 					shm_serfCount[0]--;
 					sem_post(molo);
@@ -170,70 +193,77 @@ void Serf(int capacity, int waitTime, int rowTime)
 					sem_post(molo);
 				}
 
+				// Starts the boat
+				fprintf(outFile, "%d: %s %d: boards: %d: %d\n", ++shm_actionNumber[0], name,
+						processNum, shm_hackerCount[0], shm_serfCount[0]);
 				shmAccessClose();
-
-				printf("SERF[%d]: Sailing away\n",processNum );
 				mysleep(rowTime);
 
-				printf("waiting for end\n");
-				for (int i = 0; i < 3; ++i) sem_post(disembark);
-				for (int i = 0; i < 3; ++i) sem_wait(boatMembers);
-
+				// Signals the members to disembark
+				for (int i = 0; i < 3; i++) sem_post(disembark);
+				// Waits for all 3 members to disembark
+				for (int i = 0; i < 3; i++) sem_wait(boatMembers);
 				shmAccessOpen();
+				// If there is only the captain on board, ends the ride and exits.
 				if(shm_serfBoat[0] == 1 && shm_hackerBoat[0] == 0){
 					shm_serfBoat[0] = 0;
+					fprintf(outFile, "%d: %s %d: captain exits: %d: %d\n", ++shm_actionNumber[0],
+							name, processNum, shm_hackerCount[0], shm_serfCount[0]);
 					shmAccessClose();
-					printf("SERF[%d]: Ending ride\n",processNum );
 					sem_post(captain);
 					for(int i = 0; i < 4; i++) sem_post(boardBoat);
 					exit(EXIT_SUCCESS);
 				}
-				shmAccessClose();
-				pid_t errorID = fork();
-				if(errorID > 0){
-					fprintf(stderr, "Did not succesfully disembark\n");
-						shmAccessOpen();
-						printf("SERF[%d]: Leftover members - H: %d, S: %d\n",processNum, shm_hackerCount[0], shm_serfCount[0] );
+				// If there are leftover members on board ends with an error message
+				else{
+					fprintf(stderr, "%d: %s %d: Did not succesfully disembark\n",
+							++shm_actionNumber[0], name, processNum);
+						fprintf(stderr,"Leftover on boat - H: %d, S: %d\n",	shm_hackerBoat[0],
+							shm_serfBoat[0]);
 						shmAccessClose();
-
-					exit(EXIT_FAILURE);
+						ClearData();
+						exit(EXIT_FAILURE);
 				}
 			}
 
 			//SHIP MEMBER BRANCH
 			else{
 				shmAccessClose();
+				// Waits for captains command to disembard
 				sem_wait(disembark);
-				printf("SERF[%d]: DISSEMBARKING\n",processNum );
 				shmAccessOpen();
+				// disembarks with message
 				shm_serfBoat[0]--;
+				fprintf(outFile, "%d: %s %d: member exits: %d: %d\n", ++shm_actionNumber[0],
+						name, processNum, shm_hackerCount[0], shm_serfCount[0]);
 				shmAccessClose();
+				// signals the captain about successful disembarking
 				sem_post(boatMembers);
 				exit(EXIT_SUCCESS);
 			}
 		}
+		// If the process cant get on board, it tries again
 		else{
 			shmAccessClose();
 			cant_enter_ship = 1;
 			sem_post(boardBoat);
 		}
 	}while(cant_enter_ship);
-
-	fprintf(stderr, "SERF[%d]: I failed Bossman\n",processNum);
+	//If for some reason, it gets out, the process is ended with an error message
+	shmAccessOpen();
+	fprintf(stderr, "%d: %s %d: Ended unsuccefully\n",++shm_actionNumber[0], name, processNum);
+	shmAccessClose();
 	exit(EXIT_FAILURE);
 }
 
 
-
-
-
-
-void HackerGenerator(int personCount, int hackerTime, int waitTime,int capacity, int rowTime)
+void HackerGenerator(int personCount, int hackerTime, int waitTime,int capacity, int rowTime, 
+	FILE *outFile)
 {
 	for(int i = 0; i < personCount; i++){
 		pid_t hackerID = fork();
 		if (hackerID == 0){
-			Hacker(capacity, waitTime, rowTime);
+			Hacker(capacity, waitTime, rowTime, outFile);
 		}
 		if (hackerID < 0){
 			fprintf(stderr, "Couldn't generate Hackers.\n");
@@ -246,16 +276,13 @@ void HackerGenerator(int personCount, int hackerTime, int waitTime,int capacity,
 }
 
 
-
-
-
-
-void SerfGenerator(int personCount, int serfTime, int waitTime, int capacity, int rowTime)
+void SerfGenerator(int personCount, int serfTime, int waitTime, int capacity, int rowTime, 
+	FILE *outFile)
 {
 	for(int i = 0; i < personCount; i++){
 		pid_t serfID = fork();
 		if (serfID == 0){
-			Serf(capacity, waitTime, rowTime);
+			Serf(capacity, waitTime, rowTime,outFile);
 		}
 		if (serfID < 0){
 			fprintf(stderr, "Couldn't generate Serfs\n");
@@ -269,16 +296,20 @@ void SerfGenerator(int personCount, int serfTime, int waitTime, int capacity, in
 }
 
 
-
-
-
-
 int main(int argc, char const *argv[])
 {
 	if (argc != 7){
 		fprintf(stderr, "Invalid amount of arguments. Argument count: %d\n",argc);
 		return 1;
 	}
+	// Opening output file
+	FILE *outFile = fopen("proj2.out", "w");
+	setbuf(outFile, NULL);
+	if (outFile == NULL){
+		fprintf(stderr, "Output file didn't open correctly.");
+		return 1;
+	}
+	// initializing and declaring variables
 	long personCount = 0;
 	long hackerTime = 0;
 	long serfTime = 0;
@@ -286,7 +317,8 @@ int main(int argc, char const *argv[])
 	long waitTime = 0;
 	long capacity = 0;
 	char *ptr;
-	// LOADING ARGUMENTS 
+
+	// PARSING ARGUMENTS 
 	for(int i = 3; i != argc*2; i++){
 		int argument = (i/2);
 		if ((i % 2) == 0){
@@ -325,16 +357,15 @@ int main(int argc, char const *argv[])
 				return 1;
 			}
 		}
-//		printf("P= %li; H = %li; S = %li; R = %li; W = %li; C = %li\n",personCount, hackerTime,
-//			serfTime, rowTime, waitTime, capacity);
 	}
+
 	//INITIALIZING SEMAPHORES AND SHARED MEMORY VARIABLES
 	if (init() == -1){
-		printf("initialization went awry\n");
 		ClearData();
 		return -1;
 	}
-	//Allowing one process to access memory
+
+	//Allowing one process to access memory and 4 processes to board the ship
 	sem_post(memAccess);
 	sem_post(captain);
 	for(int i = 0; i < capacity; i++){
@@ -342,27 +373,30 @@ int main(int argc, char const *argv[])
 	}
 	for(int i = 0; i < 4; i++) sem_post(boardBoat);
 
+	// Hacker generator
 	pid_t hackerGeneratorID = fork();
 	if(hackerGeneratorID == 0){
-		HackerGenerator(personCount,hackerTime,waitTime,capacity,rowTime);
+		HackerGenerator(personCount,hackerTime,waitTime,capacity,rowTime, outFile);
 		exit(EXIT_SUCCESS);
 	}
+
 	else if (hackerGeneratorID > 0){
+		// Serf generator
 		pid_t SerfGeneratorID = fork();
 		if (SerfGeneratorID == 0){
-			SerfGenerator(personCount,serfTime,waitTime,capacity,rowTime);
+			SerfGenerator(personCount,serfTime,waitTime,capacity,rowTime, outFile);
 		}
 		if (SerfGeneratorID < 0){
-			//error
+			fprintf(stderr, "Failed to start the hacker generator process.\n");
+			return 1;
 		}
 	}
 	else {
-		//error
+		fprintf(stderr, "Failed to start the serf generator process.\n");
 	}
 	wait(NULL);
 	wait(NULL);
-
+	fclose(outFile);
 	ClearData();
-	printf("%s\n","done, Bossman" );
 	return 0;
 }

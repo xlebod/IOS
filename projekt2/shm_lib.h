@@ -1,17 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
-#include <semaphore.h>
-#include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/shm.h>
+#include <semaphore.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 #include <signal.h>
 #include <ctype.h>
-#include <unistd.h>
-#include <sys/mman.h>
 
+// macro to sleep in a rnadom interval from <0,maxtime>
 #define mysleep(maxtime) {if(maxtime != 0)sleep((rand() % maxtime)+1);}
 
 //SEM NAMES AND SMH KEYS
@@ -46,7 +46,11 @@ sem_t *disembark = NULL;
 sem_t *boardBoat = NULL;
 
 
-
+// all the actions to operate with shm variables:
+// shmVar_init - initializes the shm variable
+// shmVar_open - allows the variable value to be accessed and modified
+// shmVar_close - closes access to variable value
+// shmVar_unlink - unlinks the shm variable
 int actionNumber_init()
 {
 	int shmID_actionNumber;
@@ -57,7 +61,7 @@ int actionNumber_init()
 	close(shmID_actionNumber);
 	if(shm_actionNumber == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: actionNum");
-		return -1;
+		return 1;
 	}
 	shm_actionNumber[0] = 0;
 	munmap(shm_actionNumber, shmSIZE);
@@ -92,7 +96,7 @@ int serfCount_init()
 	close(shmID_serfCount);
 	if(shm_serfCount == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: serfCount");
-		return -1;
+		return 1;
 	}
 	shm_serfCount[0] = 0;
 	munmap(shm_serfCount, shmSIZE);
@@ -127,7 +131,7 @@ int hackerCount_init()
 	close(shmID_hackersCount);
 	if(shm_hackerCount == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: hackerCount");
-		return -1;
+		return 1;
 	}
 	shm_hackerCount[0] = 0;
 	munmap(shm_hackerCount, shmSIZE);
@@ -162,7 +166,7 @@ int numberOfProcesses_init()
 	close(shmID_numberOfProcesses);
 	if(shm_numberOfProcesses == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: numberOfProcesses");
-		return -1;
+		return 1;
 	}
 	shm_numberOfProcesses[0] = 0;
 	munmap(shm_numberOfProcesses, shmSIZE);
@@ -197,7 +201,7 @@ int hackerBoat_init()
 	close(shmID_hackerBoat);
 	if(shm_hackerBoat == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: actionNum");
-		return -1;
+		return 1;
 	}
 	shm_hackerBoat[0] = 0;
 	munmap(shm_hackerBoat, shmSIZE);
@@ -232,7 +236,7 @@ int serfBoat_init()
 	close(shmID_serfBoat);
 	if(shm_serfBoat == (void *)-1){
 		fprintf(stderr, "Chyba pri pristupu k shared memory variable: actionNum");
-		return -1;
+		return 1;
 	}
 	shm_serfBoat[0] = 0;
 	munmap(shm_serfBoat, shmSIZE);
@@ -258,68 +262,82 @@ void serfBoat_unlink()
 }
 
 
+// initializes all semaphores and shm variables
+// Return Values:
+// 0 - success
+// 1 - error initializing
 int init()
 {
 	if ((boatMembers = sem_open(BOATMEMBERS_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		printf("1\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please.",
+			BOATMEMBERS_SEM);
+		return 1;
 	}
 
 	if ((captain = sem_open(CAPTAIN_SEM, O_CREAT | O_EXCL , 0666, 0)) == SEM_FAILED){
-		printf("2\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please.",
+			CAPTAIN_SEM);
+		return 1;
 	}
 
 	if((memAccess = sem_open(MEMACCESS_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		printf("3\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please.",
+			MEMACCESS_SEM);
+		return 1;
 	}
 
 	if ((molo = sem_open(MOLO_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		printf("4\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please.",
+			MOLO_SEM);
+		return 1;
 	}
 
 	if ((disembark = sem_open(DISEMBARK_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		printf("5\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please.",
+			DISEMBARK_SEM);
+		return 1;
 	}
 
 	if ((boardBoat = sem_open(BOARD_SEM, O_CREAT | O_EXCL, 0666, 0)) == SEM_FAILED){
-		printf("6\n");
-		return -1;
+		fprintf(stderr, "Semaphore: %s failed to inialize correctly\n. Rerun the program please."
+			,BOARD_SEM );
+		return 1;
 	}
 
 
-	if(serfCount_init() == -1){
-		printf("7\n");
-		return -1;
+	if(serfCount_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYserf );
+		return 1;
 	}
 
-	if(hackerCount_init() == -1){
-		return -1;
+	if(hackerCount_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYhacker );
+		return 1;
 	}
 
-	if(actionNumber_init() == -1){
-		return -1;
+	if(actionNumber_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYaction);
+		return 1;
 	}
 
-	if(numberOfProcesses_init() == -1){
-		return -1;
+	if(numberOfProcesses_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYprocesses );
+		return 1;
 	}
 
-	if(hackerBoat_init() == -1){
-		return -1;
+	if(hackerBoat_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYhackerBoat );
+		return 1;
 	}
 
-	if(serfBoat_init() == -1){
-		return -1;
+	if(serfBoat_init() == 1){
+		fprintf(stderr, "Failed to initialize the %s shared memory variable.\n", shmKEYserfBoat );
+		return 1;
 	}
-
 	return 0;
 }
 
-
+// clears all data from shm variables and semaphores
 void ClearData()
 {
 	sem_close(boatMembers);
@@ -341,7 +359,7 @@ void ClearData()
 	serfBoat_unlink();
 	hackerBoat_unlink();
 }
-
+// opens all shm variables
 void shmAccessOpen()
 {
 	sem_wait(memAccess);
@@ -352,7 +370,7 @@ void shmAccessOpen()
 	hackerBoat_open();
 	serfBoat_open();
 }
-
+// Closes all shm variables
 void shmAccessClose()
 {
 	serfCount_close();

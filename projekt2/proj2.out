@@ -1,0 +1,89 @@
+1: HACK 0: starts 
+2: HACK 1: starts 
+3: HACK 1: waits: 1: 0
+4: SERF 2: starts 
+5: HACK 3: starts 
+6: HACK 3: waits: 2: 0
+7: SERF 4: starts 
+8: SERF 4: waits: 2: 1
+9: SERF 5: starts 
+10: SERF 5: waits: 2: 2
+11: HACK 0: waits: 3: 2
+12: HACK 6: starts 
+13: HACK 6: waits: 4: 2
+14: SERF 7: starts 
+15: SERF 7: leaves queue: 4: 2
+16: HACK 8: starts 
+17: HACK 8: leaves queue: 4: 2
+18: HACK 9: starts 
+19: HACK 9: leaves queue: 4: 2
+20: SERF 10: starts 
+21: SERF 10: leaves queue: 4: 2
+22: SERF 4: boards: 2: 0
+23: HACK 11: starts 
+24: HACK 11: waits: 3: 0
+25: SERF 12: starts 
+26: SERF 12: waits: 3: 1
+27: SERF 13: starts 
+28: SERF 13: waits: 3: 2
+29: SERF 14: starts 
+30: SERF 2: waits: 3: 3
+31: SERF 15: starts 
+32: HACK 16: starts 
+33: HACK 17: starts 
+34: HACK 17: leaves queue: 3: 3
+35: SERF 14: leaves queue: 3: 3
+36: SERF 18: starts 
+37: SERF 18: leaves queue: 3: 3
+38: HACK 19: starts 
+39: HACK 19: leaves queue: 3: 3
+40: HACK 16: leaves queue: 3: 3
+41: SERF 15: leaves queue: 3: 3
+42: HACK 3: member exits: 3: 3
+43: SERF 5: member exits: 3: 3
+44: HACK 1: member exits: 3: 3
+45: SERF 4: captain exits: 3: 3
+46: SERF 2: boards: 1: 1
+47: HACK 11: member exits: 1: 1
+48: HACK 0: member exits: 1: 1
+49: SERF 12: member exits: 1: 1
+50: SERF 2: captain exits: 1: 1
+51: SERF 7: is back
+52: SERF 7: waits: 1: 2
+53: HACK 8: is back
+54: HACK 8: waits: 2: 2
+55: SERF 10: is back
+56: SERF 10: waits: 2: 3
+57: HACK 6: boards: 0: 1
+58: HACK 9: is back
+59: HACK 9: waits: 1: 1
+60: HACK 17: is back
+61: HACK 17: waits: 2: 1
+62: SERF 15: is back
+63: SERF 15: waits: 2: 2
+64: SERF 14: is back
+65: SERF 14: waits: 2: 3
+66: HACK 16: is back
+67: HACK 16: waits: 3: 3
+68: SERF 18: is back
+69: SERF 18: leaves queue: 3: 3
+70: HACK 19: is back
+71: HACK 19: leaves queue: 3: 3
+72: HACK 8: member exits: 3: 3
+73: SERF 7: member exits: 3: 3
+74: SERF 13: member exits: 3: 3
+75: HACK 6: captain exits: 3: 3
+76: HACK 17: boards: 1: 1
+77: SERF 15: member exits: 1: 1
+78: HACK 9: member exits: 1: 1
+79: SERF 10: member exits: 1: 1
+80: HACK 17: captain exits: 1: 1
+81: HACK 19: is back
+82: HACK 19: waits: 2: 1
+83: SERF 18: is back
+84: SERF 18: waits: 2: 2
+85: SERF 14: boards: 0: 0
+86: HACK 19: member exits: 0: 0
+87: SERF 18: member exits: 0: 0
+88: HACK 16: member exits: 0: 0
+89: SERF 14: captain exits: 0: 0
